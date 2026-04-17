@@ -1,4 +1,4 @@
-"""Minimal provider client for OpenAI/Anthropic using stdlib HTTP.
+"""Minimal provider client for OpenAI/Anthropic/Hugging Face/OpenRouter using stdlib HTTP.
 외부 SDK 없이 urllib만 써서 prompt를 보내고 completion text를 받아오는 역할 (문자열 prompt 넣고 문자열 응답 받는...)
 """
 
@@ -33,7 +33,7 @@ class LLMClient:
         self.provider = provider.lower().strip()
         self.model = model
         self.api_key = api_key
-        if self.provider not in {"openai", "anthropic"}:
+        if self.provider not in {"openai", "anthropic", "huggingface", "openrouter"}:
             raise LLMClientError(f"unsupported provider: {provider}")
     # prompt별로 최종 text return
     def complete(
@@ -56,6 +56,10 @@ class LLMClient:
             return _openai_complete(req)
         if req.provider == "anthropic":
             return _anthropic_complete(req)
+        if req.provider == "huggingface":
+            return _huggingface_complete(req)
+        if req.provider == "openrouter":
+            return _openrouter_complete(req)
         raise LLMClientError(f"unsupported provider: {req.provider}")
 
 
@@ -70,7 +74,13 @@ def get_api_key(provider: str, explicit_key: Optional[str], api_key_env: Optiona
         if key:
             return key
 
-    fallback_env = "OPENAI_API_KEY" if provider == "openai" else "ANTHROPIC_API_KEY"
+    fallback_env_map = {
+        "openai": "OPENAI_API_KEY",
+        "anthropic": "ANTHROPIC_API_KEY",
+        "huggingface": "HF_TOKEN",
+        "openrouter": "OPENROUTER_API_KEY",
+    }
+    fallback_env = fallback_env_map.get(provider, "OPENAI_API_KEY")
     key = os.getenv(fallback_env)
     if key:
         return key
@@ -273,11 +283,86 @@ def _anthropic_complete(req: LLMRequest) -> str:
     return text
 
 
+def _extract_chat_completions_text(data: dict) -> str:
+    out = []
+    for choice in data.get("choices", []):
+        if not isinstance(choice, dict):
+            continue
+        message = choice.get("message")
+        if not isinstance(message, dict):
+            continue
+        content = message.get("content")
+        if isinstance(content, str) and content.strip():
+            out.append(content.strip())
+            continue
+        if not isinstance(content, list):
+            continue
+        for part in content:
+            if not isinstance(part, dict):
+                continue
+            text = part.get("text")
+            if isinstance(text, str) and text.strip():
+                out.append(text.strip())
+    return "\n".join(out).strip()
+
+
+def _huggingface_complete(req: LLMRequest) -> str:
+    url = "https://router.huggingface.co/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {req.api_key}",
+        "Content-Type": "application/json",
+    }
+    body = {
+        "model": req.model,
+        "messages": [{"role": "user", "content": req.prompt}],
+        "max_tokens": req.max_tokens,
+    }
+    if req.temperature is not None:
+        body["temperature"] = req.temperature
+
+    data = _http_post_json(url, headers, body, req.timeout_sec)
+    text = _extract_chat_completions_text(data)
+    if not text:
+        raise LLMClientError(
+            "Hugging Face response did not contain text output. "
+            f"summary={_compact_json({'model': data.get('model'), 'id': data.get('id')})}"
+        )
+    return text
+
+
+def _openrouter_complete(req: LLMRequest) -> str:
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {req.api_key}",
+        "Content-Type": "application/json",
+    }
+    body = {
+        "model": req.model,
+        "messages": [{"role": "user", "content": req.prompt}],
+        "max_tokens": req.max_tokens,
+    }
+    if req.temperature is not None:
+        body["temperature"] = req.temperature
+
+    data = _http_post_json(url, headers, body, req.timeout_sec)
+    text = _extract_chat_completions_text(data)
+    if not text:
+        raise LLMClientError(
+            "OpenRouter response did not contain text output. "
+            f"summary={_compact_json({'model': data.get('model'), 'id': data.get('id')})}"
+        )
+    return text
+
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Quick LLM completion test")
-    parser.add_argument("--provider", choices=["openai", "anthropic"], required=True)
+    parser.add_argument(
+        "--provider",
+        choices=["openai", "anthropic", "huggingface", "openrouter"],
+        required=True,
+    )
     parser.add_argument("--model", required=True)
     parser.add_argument("--prompt", required=True)
     parser.add_argument("--api-key", default=None)

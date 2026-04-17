@@ -1,5 +1,7 @@
 import argparse
 
+from llm_presets import apply_agent_preset, get_agent_type_choices
+
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -20,7 +22,7 @@ def get_ldri_args():
     parser.add_argument("--MODE", type=str, default="CS", help="CS or CD")
     parser.add_argument("--soc0", type=float, default=0.6)
     parser.add_argument("--soc_target", type=float, default=0.6)
-    parser.add_argument("--w_soc", type=float, default=100.0)
+    parser.add_argument("--w_soc", type=float, default=200.0)
     parser.add_argument("--w_h2", type=float, default=10.0)
     parser.add_argument("--w_fc", type=float, default=4.275e6)
     parser.add_argument("--w_batt", type=float, default=1.116e6)
@@ -113,10 +115,33 @@ def get_ldri_args():
     parser.add_argument("--prompt_template", type=str, default="./reward_refinement_codex_prompt.md")
 
     # LLM client
-    parser.add_argument("--llm_provider", type=str, default="openai", choices=["openai", "anthropic"])
-    parser.add_argument("--llm_model", type=str, default="gpt-5.4")
+    parser.add_argument(
+        "--agent_type",
+        type=str,
+        default="gpt",
+        choices=get_agent_type_choices(),
+        help="high-level agent preset: gpt/openai, claude/anthropic, llama/huggingface",
+    )
+    parser.add_argument(
+        "--llm_provider",
+        type=str,
+        default=None,
+        choices=["openai", "anthropic", "huggingface", "openrouter"],
+        help="optional provider override; defaults from --agent_type",
+    )
+    parser.add_argument(
+        "--llm_model",
+        type=str,
+        default=None,
+        help="optional model override; defaults from --agent_type",
+    )
     parser.add_argument("--llm_api_key", type=str, default=None)
-    parser.add_argument("--llm_api_key_env", type=str, default="OPENAI_API_KEY")
+    parser.add_argument(
+        "--llm_api_key_env",
+        type=str,
+        default=None,
+        help="optional API-key env override; defaults from --agent_type",
+    )
     parser.add_argument("--llm_temperature", type=float, default=0.2)
     parser.add_argument("--llm_max_tokens", type=int, default=3500)
     parser.add_argument("--llm_timeout_sec", type=int, default=240)
@@ -252,4 +277,5 @@ def get_ldri_args():
     parser.add_argument("--file_v", type=str, default="v_ldri")
 
     args = parser.parse_args()
+    args = apply_agent_preset(args)
     return args

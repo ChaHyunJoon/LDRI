@@ -18,6 +18,7 @@ from typing import Dict
 
 from feedback_parser import LogParseError, build_feedback_bundle
 from llm_client import LLMClient, LLMClientError, get_api_key
+from llm_presets import apply_agent_preset, get_agent_type_choices
 from prompt_builder import (
     PromptBuildError,
     build_iteration_prompt,
@@ -161,8 +162,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--soc-low", type=float, default=0.4)
     parser.add_argument("--soc-high", type=float, default=0.8)
 
-    parser.add_argument("--provider", choices=["openai", "anthropic"], default="openai")
-    parser.add_argument("--model", default="gpt-4.1")
+    parser.add_argument(
+        "--agent-type",
+        default="gpt",
+        choices=get_agent_type_choices(),
+        help="high-level agent preset: gpt/openai, claude/anthropic, llama/huggingface",
+    )
+    parser.add_argument(
+        "--provider",
+        choices=["openai", "anthropic", "huggingface", "openrouter"],
+        default=None,
+    )
+    parser.add_argument("--model", default=None)
     parser.add_argument("--api-key", default=None)
     parser.add_argument("--api-key-env", default=None)
     parser.add_argument("--temperature", type=float, default=0.2)
@@ -183,7 +194,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-apply", action="store_true")
     parser.add_argument("--no-backup", action="store_true")
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.llm_provider = args.provider
+    args.llm_model = args.model
+    args.llm_api_key_env = args.api_key_env
+    args = apply_agent_preset(args)
+    args.provider = args.llm_provider
+    args.model = args.llm_model
+    args.api_key_env = args.llm_api_key_env
+    return args
 
 
 def main() -> None:

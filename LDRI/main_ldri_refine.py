@@ -66,8 +66,10 @@ RESUME_RESTORE_KEYS = [
     "bootstrap_task_description",
     "bootstrap_max_attrs",
     "bootstrap_max_methods",
+    "agent_type",
     "llm_provider",
     "llm_model",
+    "llm_api_key_env",
     "enable_tpe",
     "tpe_margin",
     "parse_retries",
@@ -1268,8 +1270,10 @@ def main():
             "bootstrap_task_description": args.bootstrap_task_description,
             "bootstrap_max_attrs": args.bootstrap_max_attrs,
             "bootstrap_max_methods": args.bootstrap_max_methods,
+            "agent_type": args.agent_type,
             "llm_provider": args.llm_provider,
             "llm_model": args.llm_model,
+            "llm_api_key_env": args.llm_api_key_env,
             "enable_tpe": args.enable_tpe,
             "tpe_margin": args.tpe_margin,
             "parse_retries": args.parse_retries,
@@ -1300,6 +1304,10 @@ def main():
     print(f"LDRI run root: {run_root}")
     print(f"Training algorithm: {args.DRL}")
     print(f"Reward module/file: {args.reward_module} / {args.reward_file}")
+    print(
+        "LLM agent/provider/model: "
+        f"{args.agent_type} / {args.llm_provider} / {args.llm_model}"
+    )
 
     manual_pre_refine_source_iter = int(getattr(args, "manual_pre_refine_source_iter", 0))
     if manual_pre_refine_source_iter > 0:
