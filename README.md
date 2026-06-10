@@ -130,35 +130,6 @@ python main_ldri_refine.py \
     --multi_agent_review True
 ```
 
-### 4. Resume a previous run
-
-```bash
-python main_ldri_refine.py \
-    --resume_run_root ./ldri_runs/<run_folder> \
-    --resume_additional_iterations 3
-```
-
----
-
-## Key Arguments
-
-| Argument | Default | Description |
-|---|---|---|
-| `--agent_type` | `""` | LLM preset: `claude`, `gpt`, `llama` |
-| `--scenario_name` | `Standard_WLTC_WVUINTER` | Driving cycle scenario |
-| `--ldri_iterations` | `5` | Number of reward refinement iterations |
-| `--chunk_episodes` | `500` | SAC training episodes per iteration |
-| `--feedback_process_episodes` | `10` | Recent episodes used for feedback |
-| `--multi_agent_review` | `False` | Enable 6-stage multi-agent pipeline |
-| `--debate_rounds` | `1` | Reviewer debate rounds (MAD-style) |
-| `--bootstrap_from_scratch` | `True` | Generate initial reward via LLM |
-| `--reset_agent_on_patch` | `True` | Reset SAC weights after reward patch |
-| `--auto_lr_on_reward_patch` | `True` | Auto-tune LR bands after patch |
-| `--tpe_retries` | `20` | Max TPE/gate retries per iteration |
-| `--aligned_min_tac` | `0.3` | Kendall τ threshold for gate Layer 1 |
-
----
-
 ## Output Structure
 
 Each run creates a timestamped folder under `--ldri_root` (default `./ldri_runs/`):
